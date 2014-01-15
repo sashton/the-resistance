@@ -1,0 +1,79 @@
+hr {
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+.player {
+  border-radius: 5px;
+  -moz-border-radius: 5px;
+  -webkit-border-radius: 5px;
+  border: solid gray 1px;
+  margin-right: 8px;
+  margin-bottom: 8px;
+  padding: 0px 12px 0px 12px;
+  font-size: 20px;
+  float: left;
+  position: relative;
+  text-shadow: 0px -1px 0px #cccccc;
+  color: #333333;
+  background-color: #bbbbbb;
+  font-weight: bold; 
+}
+
+
+.player .leader {
+   content:url(/static/img/leader.png);
+   top: -6px;
+   position: absolute;
+   right: -6px;
+}​
+
+.player .leader2 {
+  background-color: blue;
+  top: 6px;
+  position: absolute;
+  width: 15px;
+  height: 15px;
+  border-radius: 25px;
+  -moz-border-radius: 25px;
+  -webkit-border-radius: 25px;
+  position: absolute;
+  border: solid gray 1px;
+  left: -8px;
+}
+
+.player.proposed {
+  background-color: yellow;
+}
+
+.player.mission {
+  background-color: lightgreen;
+}
+
+
+#game-state .round {
+  border-radius: 22px;
+  -moz-border-radius: 22px;
+  -webkit-border-radius: 22px;
+  width: 30px;
+  height: 30px;
+  border: solid gray 1px;
+  margin-left: 4px;
+  padding-left: 8px;
+  font-size: 20px;
+  float: left;
+}
+
+.current {
+  background-color: yellow;
+}
+
+.failed {
+  background-color: red;
+}
+
+.passed {
+  background-color: lightgreen;
+}
+
+

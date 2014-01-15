@@ -1,0 +1,91 @@
+<!doctype html>
+<html ng-app="myApp">
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <link rel="stylesheet" href="/static/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="/static/css/style.css"/>
+    <script src="/static/underscore-min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/static/jquery.min.js"></script>
+
+    <script src="/static/js/angular.js"></script>
+    <script src="/static/js/bootstrap.min.js"></script>
+    <script src="/static/js/app.js"></script>
+
+  </head>
+  <body ng-controller="AppCtrl">
+    <div class="container">
+      <div ng-switch on="stage">
+        <div ng-switch-when="unstarted">
+          <div class="row">
+            <div class="col-xs-12">
+              <label>Your Name</label>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-xs-12">
+              <input ng-model="$parent.playerName"/>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-xs-12">
+              <button  type="button" class="btn btn-success" ng-click="clickChangeName()">Change</button>
+            </div>
+          </div>
+        </div>
+        <div ng-switch-default>
+          <div class="row">
+            <div class="col-xs-6">
+              <label>Missions</label>
+              <div id="game-state" >
+                <span id="round0" class="round failed">2</span>  
+                <span id="round1" class="round passed">3</span>  
+                <span id="round2" class="round passed">2</span>  
+                <span id="round3" class="round current">3</span>  
+                <span id="round4" class="round">4</span>  
+              </div>
+            </div>
+            <div class="col-xs-6">
+              <label>Teams</label>
+              <div id="game-state" >
+                <span id="round0" class="round failed">1</span>  
+                <span id="round1" class="round current">2</span>  
+                <span id="round2" class="round">3</span>  
+                <span id="round3" class="round">4</span>  
+                <span id="round4" class="round">5</span>  
+              </div>
+            </div>
+          </div>    
+        </div>
+      </div>
+      
+      <hr/>
+      <div class="row">
+        <div class="col-xs-12" >
+          <div class="player" ng-repeat="player in players" ng-click="clickPlayer(player)" ng-class="personClass(player)"> {{player.name}}<span class="leader" ng-show="player.isleader" /></div>  
+          <!-- <div class="player">Krissy</div>  
+          <div class="player">Ashley</div>  
+          <div class="player proposed">Boston<span class=""/></div>  
+          <div class="player">Emi</div>  
+          <div class="player">Annie</div>  
+          <div class="player mission">Michael<span class=""/></div>  
+          <div class="player">Dani</div>   -->
+        </div>
+      </div>
+      <hr/>
+      <div class="row">
+        <div class="col-xs-12">
+          <label>{{msg}}</label>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-xs-6">
+          <button type="button" class="btn btn-success" ng-class="yesClass()" ng-show="showYes" ng-click="clickYes()" ng-disabled="!yesEnabled">{{yesText}}</button>
+        </div>
+        <div class="col-xs-6">
+          <button type="button" class="btn btn-danger" ng-class="noClass()" ng-show="showNo" ng-click="clickNo()" ng-disabled="!noEnabled">{{noText}}</button>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
