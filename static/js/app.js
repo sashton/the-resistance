@@ -87,6 +87,12 @@ app.controller('AppCtrl', function($scope, socket){
     	gamedata = data;
     	$scope.stage = gamedata.stage || "unstarted";
         roleReady = gamedata.roleReady;
+        $scope.votes = [];
+
+        if(gamedata.stage == "proposing" || gamedata.stage == "mission") {
+            // $scope.votes = gamedata.proposal.votes;
+        }
+
     	onStateChange();
     });
 	
@@ -125,7 +131,9 @@ app.controller('AppCtrl', function($scope, socket){
 
 	$scope.personClass = function(p) {
 		var foo = {
-			proposed: p.selected
+			proposed: p.selected,
+            'vote-up': (p.vote == "up"),
+            'vote-down': (p.vote == "down")
 		};
 		return foo;
 	};
@@ -161,11 +169,27 @@ app.controller('AppCtrl', function($scope, socket){
                 .compact()
                 .value();
             emit("propose", {players:team});
+        } else if($scope.stage == "voting") {
+            gamedata.voted = true;
+            emit("vote", {vote: 'up'});
+            onStateChange();
+        } else if($scope.stage == "mission") {
+            gamedata.voted = true;
+            emit("missionvote", {vote: 'succeed'});
+            onStateChange();
         }
     };
 
     $scope.clickNo = function() {
-
+        if($scope.stage == "voting") {
+            gamedata.voted = true;
+            emit("vote", {vote: 'down'});
+            onStateChange();
+        } else if($scope.stage == "mission") {
+            gamedata.voted = true;
+            emit("missionvote", {vote: 'fail'});
+            onStateChange();
+        }
     };
 
     
@@ -185,6 +209,8 @@ app.controller('AppCtrl', function($scope, socket){
 
 
     function onStateChange() {
+
+
     	if($scope.stage == "unstarted") {
     		$scope.showYes = true;
     		$scope.yesText = "Start Game";
@@ -228,22 +254,49 @@ app.controller('AppCtrl', function($scope, socket){
             }
     	}
         else if($scope.stage == "voting") {
-            $scope.msg = gamedata.proposal.leader.name + " has proposed a team. Do you accept the team?";
-            $scope.showYes = true;
-            $scope.showNo = true;
+            if(gamedata.voted) {
+                $scope.msg = "Waiting for the rest of the votes";
+            }
+            else {
+                $scope.msg = gamedata.proposal.leader.name + " has proposed a team. Do you accept the team?";
+            }
+            $scope.showYes = !gamedata.voted;
+            $scope.showNo = !gamedata.voted;
             $scope.yesText = "Accept";
             $scope.noText = "Reject";
             $scope.yesEnabled = true;
             $scope.noEnabled = true;
         }
-        else if($scope.stage == "mission or something") {
-            $scope.msg = gamedata.proposal.leader.name + " has proposed a team. Do you accept the team?";
-            $scope.showYes = true;
-            $scope.showNo = true;
-            $scope.yesText = "Accept";
-            $scope.noText = "Reject";
-            $scope.yesEnabled = true;
-            $scope.noEnabled = gamedata.role == "spy";
+        else if($scope.stage == "mission") {
+            console.log("mission proposal");
+            console.log(gamedata);
+            var maybePlayer = _.findWhere(gamedata.proposal.players, {session:session});
+            if(_.isUndefined(maybePlayer)) {
+                $scope.msg = "The team has been approved. Waiting for the mission team to vote."
+                $scope.showYes = false;
+                $scope.showNo = false;
+            }
+            else {
+                if(gamedata.voted) {
+                    $scope.msg = "Waiting for the rest of the votes";
+                }
+                else {
+                    $scope.msg = "The team has been approved. Vote on the mission."
+                }
+                $scope.showYes = !gamedata.voted;
+                $scope.showNo = !gamedata.voted;
+                $scope.yesEnabled = true;
+                $scope.noEnabled = (gamedata.role == "spy");
+                $scope.yesText = "Succeed";
+                $scope.noText = "Fail";
+            }
+            // $scope.msg = gamedata.proposal.leader.name + " has proposed a team. Do you accept the team?";
+            // $scope.showYes = true;
+            // $scope.showNo = true;
+            // $scope.yesText = "Accept";
+            // $scope.noText = "Reject";
+            // $scope.yesEnabled = true;
+            // $scope.noEnabled = gamedata.role == "spy";
         }
 
 
@@ -261,9 +314,13 @@ app.controller('AppCtrl', function($scope, socket){
                 p.isleader = false;
             }
             p.selected = _.contains(selectedPlayers, p.session);
-            if(gamedata.stage == "voting") {
+            if(gamedata.stage == "voting" || gamedata.stage == "mission") {
                 var proposedPlayer = _.findWhere(gamedata.proposal.players, {session:p.session});
                 p.selected = !_.isUndefined(proposedPlayer);
+            }
+            if(gamedata.stage == "proposing" || gamedata.stage == "mission") {
+                // var playerVote = _.findWhere(gamedata.proposal.votes, {session:p.session});
+                // p.vote = playerVote.vote;
             }
         });
     }

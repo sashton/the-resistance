@@ -50,6 +50,20 @@ hr {
   background-color: lightgreen;
 }
 
+.player .vote-up {
+  content:url(/static/img/thumb-up.png);
+  bottom: -8px;
+  position: absolute;
+  right: -6px;
+}
+
+.player .vote-down {
+  content:url(/static/img/thumb-down.png);
+  bottom: -8px;
+  position: absolute;
+  right: -6px;
+}
+
 
 #game-state .round {
   border-radius: 22px;

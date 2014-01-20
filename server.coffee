@@ -136,7 +136,9 @@ io.sockets.on "connection", (socket) ->
         for s in sockets
             data = {started: false}
             if obj.started
+                all = if obj.proposal then obj.proposal.votes else undefined
                 data =
+                    all: all
                     started: true
                     stage: obj.stage
                     players: obj.players
@@ -146,7 +148,7 @@ io.sockets.on "connection", (socket) ->
                     badplayercount: obj.badplayers.length
                     playercount: obj.players.length
                     missionteamsize: obj.missionteamsize
-                    roleReady: !_.isUndefined(obj.roleReady[socket.session])
+                    roleReady: !_.isUndefined(obj.roleReady[s.session])
                 if s.session in obj.badplayers
                     data.badplayers = obj.badplayers
                     data.role = "spy"
@@ -154,6 +156,15 @@ io.sockets.on "connection", (socket) ->
                     data.role = "resistance"
                 if obj.stage == "voting"
                     data.proposal = obj.proposal
+                    data.voted = !_.isUndefined(obj.proposal.votes[s.session])
+                    data.myvote = obj.proposal.votes[s.session]
+                if obj.stage == "mission"
+                    data.proposal = obj.proposal
+                    data.voted = !_.isUndefined(obj.proposal.missionvotes[s.session])
+                    data.myvote = obj.proposal.missionvotes[s.session]
+                if obj.stage == "gameover"
+                    data.badplayers = obj.badplayers
+                    data.gameResult = obj.gameResult
             s.emit "gamedata", data
         sendVisitors obj
 
@@ -216,6 +227,7 @@ io.sockets.on "connection", (socket) ->
             roleReady: {}
             readyCount: 0
             stage: "unstarted"
+            failedProposalCount: 0
             hangoutUrl: data.hangoutUrl or ""
         games.save gamedata, (err, obj) ->
             if err
@@ -267,7 +279,7 @@ io.sockets.on "connection", (socket) ->
                 upcount: 0
                 missionvotes: {}
                 missionvotecount: 0
-                sabotagecount: 0
+                failcount: 0
                 text: socket.name + " proposes the team: " + (player.name for player in data.players).toString().replace(/,/g, ", ")
             obj.stage = "voting"
             addToLog obj, "proposal", name: socket.name, session: socket.session, players: data.players
@@ -287,27 +299,28 @@ io.sockets.on "connection", (socket) ->
                 addToLog obj, "illegalmove", description: "Player '#{socket.name}' attempted to vote on the proposal AGAIN.", true
                 return                
             addToLog obj, "vote", name: socket.name, session: socket.session, vote: data.vote
-            sendMessage obj, "<i>" + socket.name + " has voted!</i>"
             obj.proposal.votes[socket.session] = {name: socket.name, vote: data.vote}
             obj.proposal.votecount += 1
             if data.vote is "up"
                 obj.proposal.upcount += 1
             if obj.proposal.votecount == obj.players.length
                 obj.proposal.votedup = obj.proposal.upcount / obj.proposal.votecount > 0.5
-                io.sockets.in(data.gameid).emit "votecomplete",
-                    votes: obj.proposal.votes
-                    votedup: obj.proposal.votedup
                 if obj.proposal.votedup
+                    obj.failedProposalCount = 0
                     obj.stage = "mission"
-                    io.sockets.in(data.gameid).emit "mission", players: obj.proposal.players
                     addToLog obj, "votepassed", votes: obj.proposal.votes
                 else
-                    obj.stage = "proposing"
-                    obj.leader = (obj.leader + 1) % obj.players.length
-                    addToLog obj, "votefailed", votes: obj.proposal.votes
-                    obj.missionteamsize = rules.rounds[obj.players.length][obj.rounds.length]
-                    newLeader obj
+                    obj.failedProposalCount += 1
+                    if obj.failedProposalCount == 5 
+                        obj.stage = "gameover"
+                        obj.gameResult = "The spies have won. There were five failed team proposals.";
+                    else
+                        obj.stage = "proposing"
+                        obj.leader = (obj.leader + 1) % obj.players.length
+                        addToLog obj, "votefailed", votes: obj.proposal.votes
+                        obj.missionteamsize = rules.rounds[obj.players.length][obj.rounds.length]
             saveGameData obj
+            sendGameData obj
 
     socket.on "roleReady", (data) ->
         loadGameData data, (err, obj) ->
@@ -321,10 +334,9 @@ io.sockets.on "connection", (socket) ->
                 addToLog obj, "illegalmove", description: "Player '#{socket.name}' attempted to set role ready AGAIN.", true
                 return                
             addToLog obj, "roleReady", name: socket.name, session: socket.session
-            obj.roleReady[socket.session] = {name: socket.name, vote: data.vote}
+            obj.roleReady[socket.session] = true
             obj.readyCount +=1
             console.log "roleReady: " + obj.readyCount + " of " + obj.players.length
-            console.log obj.roleReady
             if obj.readyCount == obj.players.length
                 obj.stage = "proposing"
                 newLeader obj
@@ -345,41 +357,44 @@ io.sockets.on "connection", (socket) ->
             sendMessage obj, "<i>" + socket.name + " has participated in the mission!</i>"
             obj.proposal.missionvotes[socket.session] = {name: socket.name, vote: data.vote}
             obj.proposal.missionvotecount += 1
-            if data.vote is "sabotage"
-                obj.proposal.sabotagecount += 1
+            if data.vote is "fail"
+                obj.proposal.failcount += 1
             if obj.proposal.missionvotecount == obj.proposal.players.length
                 if obj.rounds.length == 3 and obj.players.length in rules.twotofailrounds
                     obj.proposal.failsneeded = 2
                 else
                     obj.proposal.failsneeded = 1
-                if obj.proposal.sabotagecount >= obj.proposal.failsneeded
-                    obj.proposal.sabotaged = true
+                if obj.proposal.failcount >= obj.proposal.failsneeded
+                    obj.proposal.failed = true
                     obj.totalfailures += 1
-                    addToLog obj, "missionfailed", sabotagecount: obj.proposal.sabotagecount
+                    addToLog obj, "missionfailed", failcount: obj.proposal.failcount
                 else
-                    obj.proposal.sabotaged = false
+                    obj.proposal.failed = false
                     obj.totalsuccesses += 1
-                    addToLog obj, "missionpassed", sabotagecount: obj.proposal.sabotagecount
+                    addToLog obj, "missionpassed", failcount: obj.proposal.failcount
                 obj.rounds.push obj.proposal
-                io.sockets.in(data.gameid).emit "missioncomplete",
-                    sabotagecount: obj.proposal.sabotagecount
-                    sabotaged: obj.proposal.sabotaged
-                    round: obj.rounds.length - 1
+                #io.sockets.in(data.gameid).emit "missioncomplete",
+                #    failcount: obj.proposal.failcount
+                #    failed: obj.proposal.failed
+                #    round: obj.rounds.length - 1
                 if obj.totalfailures == 3
-                    obj.stage = "badwin"
-                    sendMessage obj, "<div style='color: red;'>The bad guys won... :(</div>"
-                    io.sockets.in(data.gameid).emit "gameover", badplayers: obj.badplayers
+                    obj.stage = "gameover"
+                    obj.result = "The spies have won. Three missions have failed."
+                    #sendMessage obj, "<div style='color: red;'>The bad guys won... :(</div>"
+                    #io.sockets.in(data.gameid).emit "gameover", badplayers: obj.badplayers
                 else if obj.totalsuccesses == 3
-                    obj.stage = "goodwin"
-                    sendMessage obj, "<div style='color: blue;'>The good guys won!</div>"
-                    io.sockets.in(data.gameid).emit "gameover", badplayers: obj.badplayers
+                    obj.stage = "gameover"
+                    obj.result = "The resistance has won. Three missions succeeded."
+                    #sendMessage obj, "<div style='color: blue;'>The good guys won!</div>"
+                    #io.sockets.in(data.gameid).emit "gameover", badplayers: obj.badplayers
                 else
                     obj.stage = "proposing"
                     obj.leader = (obj.leader + 1) % obj.players.length
                     obj.missionteamsize = rules.rounds[obj.players.length][obj.rounds.length]
-                    newLeader obj
+                    #newLeader obj
                 delete obj.proposal
             saveGameData obj
+            sendGameData obj
                 
     socket.on "startgame", (data) ->
         console.log "startgame recieved"

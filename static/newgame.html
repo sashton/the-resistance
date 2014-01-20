@@ -62,7 +62,12 @@
       <hr/>
       <div class="row">
         <div class="col-xs-12" >
-          <div class="player" ng-repeat="player in players" ng-click="clickPlayer(player)" ng-class="personClass(player)"> {{player.name}}<span class="leader" ng-show="player.isleader" /></div>  
+          <div class="player" ng-repeat="player in players" ng-click="clickPlayer(player)" ng-class="personClass(player)">
+            <div>{{player.name}}</div>
+            <span class="leader" ng-show="player.isleader" ></span>
+            <span class="vote-up" ></span>
+            <span class="vote-down" ></span>
+          </div>  
           <!-- <div class="player">Krissy</div>  
           <div class="player">Ashley</div>  
           <div class="player proposed">Boston<span class=""/></div>  
