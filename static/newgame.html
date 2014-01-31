@@ -15,8 +15,8 @@
   </head>
   <body ng-controller="AppCtrl">
     <div class="container">
-      <div ng-switch on="stage">
-        <div ng-switch-when="unstarted">
+      <div ng-switch on="game.stage">
+        <div ng-switch-when="waiting">
           <div class="row">
             <div class="col-xs-12">
               <label>Your Name</label>
@@ -62,22 +62,21 @@
       <hr/>
       <div class="row">
         <div class="col-xs-12" >
-          <div class="player" ng-repeat="player in players" ng-click="clickPlayer(player)" ng-class="personClass(player)">
+          <div class="player" ng-repeat="player in game.players" ng-click="clickPlayer(player)" ng-class="personClass(player)">
             <div>{{player.name}}</div>
-            <span class="leader" ng-show="player.isleader" ></span>
-            <span class="vote-up" ></span>
-            <span class="vote-down" ></span>
+            <span class="leader-badge"  ></span>
+            <span class="vote-up-badge" ></span>
+            <span class="vote-down-badge" ></span>
+            <span class="team-badge" ></span>
           </div>  
-          <!-- <div class="player">Krissy</div>  
-          <div class="player">Ashley</div>  
-          <div class="player proposed">Boston<span class=""/></div>  
-          <div class="player">Emi</div>  
-          <div class="player">Annie</div>  
-          <div class="player mission">Michael<span class=""/></div>  
-          <div class="player">Dani</div>   -->
         </div>
       </div>
       <hr/>
+      <div class="row" ng-hide="msg2 == undefined">
+        <div class="col-xs-12">
+          <label>{{msg2}}</label>
+        </div>
+      </div>
       <div class="row">
         <div class="col-xs-12">
           <label>{{msg}}</label>

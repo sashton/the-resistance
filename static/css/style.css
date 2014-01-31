@@ -8,7 +8,7 @@ hr {
   -moz-border-radius: 5px;
   -webkit-border-radius: 5px;
   border: solid gray 1px;
-  margin-right: 8px;
+  margin-right: 10px;
   margin-bottom: 8px;
   padding: 0px 12px 0px 12px;
   font-size: 20px;
@@ -16,16 +16,22 @@ hr {
   position: relative;
   text-shadow: 0px -1px 0px #cccccc;
   color: #333333;
-  background-color: #bbbbbb;
-  font-weight: bold; 
+  #background-color: #bbbbbb;
+  font-weight: bold;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none; 
 }
 
 
-.player .leader {
+.leader .leader-badge {
    content:url(/static/img/leader.png);
-   top: -6px;
+   top: -9px;
    position: absolute;
-   right: -6px;
+   left: -8px;
 }​
 
 .player .leader2 {
@@ -42,26 +48,40 @@ hr {
   left: -8px;
 }
 
-.player.proposed {
+.player.selected {
   background-color: yellow;
+}
+
+.player.proposed {
+  background-color: green;
 }
 
 .player.mission {
   background-color: lightgreen;
 }
 
-.player .vote-up {
+.vote-up .vote-up-badge {
   content:url(/static/img/thumb-up.png);
   bottom: -8px;
   position: absolute;
   right: -6px;
 }
 
-.player .vote-down {
+.vote-down .vote-down-badge {
   content:url(/static/img/thumb-down.png);
   bottom: -8px;
   position: absolute;
   right: -6px;
+}
+
+.team .team-badge {
+  content:url(/static/img/team.png);
+  bottom: 11px;
+  position: absolute;
+  right: -12px;
+  transform: scale(-0.5,0.6);
+  -ms-transform: scale(-0.5,0.6); /* IE 9 */
+  -webkit-transform: scale(-0.5,0.6); /* Safari and Chrome */
 }
 
 

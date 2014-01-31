@@ -50,7 +50,7 @@ hash = (msg) -> crypto.createHash('md5').update(msg || "").digest("hex")
 
 rules =
     version: 0
-    badplayers:
+    spies:
         2: 1
         3: 1
         4: 1
@@ -85,8 +85,6 @@ loadGameData = (data, callback) ->
         
 
 saveGameData = (obj) ->
-    console.log "saving"
-    console.log obj.leadername
     games.save obj
     
 
@@ -106,7 +104,6 @@ addToLog = (data, eventtype, params={}, save=false) ->
     if save
         loadGameData gameid: gameid, (err, obj) ->
             obj.log.push newdata
-            console.log "addToLog"
             saveGameData obj
     else
         data.log.push newdata
@@ -122,51 +119,55 @@ io.sockets.on "connection", (socket) ->
     socket.name = "Guest" + Math.random().toString()[3..7]
     socket.rooms = io.sockets.manager.roomClients[socket.id]
     
-    newLeader = (obj) ->
-        sendGameData obj
-        #io.sockets.in(obj.gameid).emit "newleader", obj
+    newLeader = (obj, socket) ->
+        socket.emit "new-leader", 
+            leader: obj.players[obj.leader]
+            missionteamsize: obj.missionteamsize
+            failedProposal: obj.failedProposal
+        #sendGameData obj
+        #io.sockets.in(obj.gameid).emit "new-leader", obj
     
-    sendGameData = (obj, sockets) ->
-        if obj not instanceof Object
-            return
-        if not sockets
-            sockets = io.sockets.clients(obj._id.toString())
-        if sockets not instanceof Array
-            sockets = [sockets]
-        for s in sockets
-            data = {started: false}
-            if obj.started
-                all = if obj.proposal then obj.proposal.votes else undefined
-                data =
-                    all: all
-                    started: true
-                    stage: obj.stage
-                    players: obj.players
-                    rounds: obj.rounds
-                    leader: obj.players[obj.leader]
-                    counts: rules.rounds[obj.players.length]
-                    badplayercount: obj.badplayers.length
-                    playercount: obj.players.length
-                    missionteamsize: obj.missionteamsize
-                    roleReady: !_.isUndefined(obj.roleReady[s.session])
-                if s.session in obj.badplayers
-                    data.badplayers = obj.badplayers
-                    data.role = "spy"
-                else 
-                    data.role = "resistance"
-                if obj.stage == "voting"
-                    data.proposal = obj.proposal
-                    data.voted = !_.isUndefined(obj.proposal.votes[s.session])
-                    data.myvote = obj.proposal.votes[s.session]
-                if obj.stage == "mission"
-                    data.proposal = obj.proposal
-                    data.voted = !_.isUndefined(obj.proposal.missionvotes[s.session])
-                    data.myvote = obj.proposal.missionvotes[s.session]
-                if obj.stage == "gameover"
-                    data.badplayers = obj.badplayers
-                    data.gameResult = obj.gameResult
-            s.emit "gamedata", data
-        sendVisitors obj
+    sendGameData = (obj) ->
+        s = socket
+        #if obj not instanceof Object
+        #    return
+        #if not sockets
+        #    sockets = io.sockets.clients(obj._id.toString())
+        #if sockets not instanceof Array
+        #    sockets = [sockets]
+        #for s in sockets
+        data = {started: false}
+        if obj.started
+            data =
+                started: true
+                stage: obj.stage
+                players: obj.players
+                rounds: obj.rounds
+                leader: obj.players[obj.leader]
+                counts: rules.rounds[obj.players.length]
+                spycount: obj.spies.length
+                playercount: obj.players.length
+                missionteamsize: obj.missionteamsize
+                #roleReady: !_.isUndefined(obj.roleReady[s.session])
+            if s.session in obj.spies
+                data.spies = obj.spies
+                data.role = "spy"
+            else 
+                data.role = "resistance"
+                data.spies = []
+            #if obj.stage == "voting"
+            #    data.proposal = obj.proposal
+            #    data.voted = !_.isUndefined(obj.proposal.votes[s.session])
+            #    data.myvote = obj.proposal.votes[s.session]
+            #if obj.stage == "mission"
+            #    data.proposal = obj.proposal
+            #    data.voted = !_.isUndefined(obj.proposal.missionvotes[s.session])
+            #    data.myvote = obj.proposal.missionvotes[s.session]
+            #if obj.stage == "gameover"
+            #    data.spies = obj.spies
+            #    data.gameResult = obj.gameResult
+            s.emit "game-data", data
+        #sendVisitors obj
 
     sendVisitors = (obj, sockets) ->
         if obj not instanceof Object
@@ -177,6 +178,20 @@ io.sockets.on "connection", (socket) ->
             sockets = [sockets]
         for s in sockets
             s.emit "visitors", visitors: obj.visitors
+
+    sendProposal = (obj, socket) ->
+        socket.emit "proposal", 
+            proposal: obj.proposal
+            voted: !_.isUndefined(obj.proposal.votes[socket.session])
+
+    startMission = (obj, socket) ->
+        socket.emit "start-mission",
+            voted: !_.isUndefined(obj.proposal.missionvotes[socket.session])
+            proposal: obj.proposal
+
+    gameOver = (obj, socket) ->
+        socket.emit "gameover",
+            result: obj.result
     
     proposeIfLeader = (obj) ->
         if obj.started and socket.session is obj.players[obj.leader].session and obj.stage is "proposing"
@@ -187,17 +202,8 @@ io.sockets.on "connection", (socket) ->
             if player is session or player.session is session
                 return true
         return false
-    
-    # handle incoming "msg" events, and emit them back out to all connected clients
-    socket.on "msg", (data) ->
-        if data.message[0...35] is "https://plus.google.com/hangouts/_/"
-            games.save _id: new db.ObjectID(data.gameid.toString()), hangoutUrl: data.message
-            io.sockets.in(data.gameid).emit "hangout", url: data.message
-        else
-            message = "<b>" + socket.name + ":</b> " + _.escape data.message
-            addToLog data, "message", name: socket.name, session: socket.session, msg: data.message, true
-            sendMessage data, message
 
+    
     socket.on "session", (data) ->
         socket.session = hash(data.sessionid)
         socket.emit "session", session: socket.session
@@ -209,7 +215,6 @@ io.sockets.on "connection", (socket) ->
             socket.emit "name", session: socket.session, name: socket.name
 
     socket.on "changename", (data) ->
-        console.log "changing name: " + data.name
         if not socket.session then return
         socket.name = _.escape data.name
         names.save _id: socket.session, name: socket.name
@@ -228,7 +233,6 @@ io.sockets.on "connection", (socket) ->
             readyCount: 0
             stage: "unstarted"
             failedProposalCount: 0
-            hangoutUrl: data.hangoutUrl or ""
         games.save gamedata, (err, obj) ->
             if err
                 console.error err
@@ -236,31 +240,104 @@ io.sockets.on "connection", (socket) ->
             if not obj
                 console.warn "Game creation did not return an object; MongoDB issue?"
             if data.gameid
-                console.log "gameid $data.gameid"
                 io.sockets.in(data.gameid).emit "showgame", gameid: obj._id
             else
                 socket.emit "showgame", gameid: obj._id
 
-    socket.on "joingame", (data) ->
+    socket.on "join-game", (data) ->
         if not socket.session then return
-        console.log "joining game: " + data.gameid
         loadGameData data, (err, obj) ->
             obj.visitors or= {}
             obj.visitors[socket.session] = socket.name
-            sendVisitors obj
             socket.join(data.gameid)
-            # send all the cached game data to the client, to initialize it
-            if obj.hangoutUrl
-                socket.emit "hangout", url: obj.hangoutUrl
-            sendGameData obj, socket
-            console.log "joingame"
-            saveGameData obj
-            proposeIfLeader obj
-            if obj.stage is "voting" and not obj.proposal.votes[socket.session]
-                socket.emit "voting", proposal: obj.proposal.text
-            if obj.stage is "mission" and not obj.proposal.missionvotes[socket.session]
-                socket.emit "mission", players: obj.proposal.players
+            sendVisitors obj
             
+            # send all the cached game data to the client, to initialize it
+            sendGameData obj
+            saveGameData obj
+            if obj.stage is "unstarted"
+                socket.emit "showgame", gameid: obj._id
+            if obj.stage is "role-assign"
+                sendRole obj, socket
+            if obj.stage is "proposing"
+                newLeader obj, socket
+            if obj.stage is "voting"
+                sendProposal obj, socket
+            if obj.stage is "mission"
+                startMission obj, socket
+            if obj.stage is "gameover"
+                gameOver obj, socket
+
+
+            #proposeIfLeader obj
+            #if obj.stage is "voting" and not obj.proposal.votes[socket.session]
+            #    socket.emit "voting", proposal: obj.proposal.text
+            #if obj.stage is "mission" and not obj.proposal.missionvotes[socket.session]
+            #    socket.emit "mission", players: obj.proposal.players
+    
+    socket.on "start-game", (data) ->
+        loadGameData data, (err, obj) ->
+            if obj.stage isnt "unstarted"
+                console.log "invalid action"
+                addToLog obj, "illegalmove", description: "Player '#{socket.name}' attempted to start the game, but it's already started.", true
+                return
+            obj.started = true
+            obj.stage = "role-assign"
+            obj.players = ({session: s, name: n} for s, n of obj.visitors)
+            numBad = rules.spies[obj.players.length]
+            obj.spies = (p.session for p in _.shuffle(obj.players)[0...numBad])
+            obj.rulesversion = rules.version
+            obj.leader = Math.floor(Math.random() * obj.players.length)
+            obj.totalfailures = 0
+            obj.totalsuccesses = 0
+            obj.timestarted = new Date()
+            obj.rounds = []
+            obj.missionteamsize = rules.rounds[obj.players.length][obj.rounds.length]
+            #for s in io.sockets.clients(data.gameid)
+            #    s.emit "role-assign"
+            #sendGameData obj
+            addToLog obj, "gamestart"
+            saveGameData obj
+            #sendRoles
+            for s in io.sockets.clients(data.gameid)
+                sendRole obj, s
+            #newLeader obj
+
+    sendRole = (obj, socket) ->
+        if listContainsSession(obj.spies, socket.session)
+            socket.emit "new-role", 
+                role: "spy"
+                spies: obj.spies
+                roleReady: obj.roleReady[socket.session]
+        else if listContainsSession(obj.players, socket.session)
+            socket.emit "new-role", 
+                role: "resistance"
+                spies: []
+                roleReady: obj.roleReady[socket.session]
+
+    socket.on "role-ready", (data) ->
+        loadGameData data, (err, obj) ->
+            if obj.stage isnt "role-assign"
+                addToLog obj, "illegalmove", description: "Player '#{socket.name}' attempted to set role ready, not time.", true
+                return
+            if not listContainsSession(obj.players)
+                addToLog obj, "illegalmove", description: "Player '#{socket.name}' attempted to set role ready, but isn't in the game.", true
+                return
+            if obj.roleReady[socket.session]
+                addToLog obj, "illegalmove", description: "Player '#{socket.name}' attempted to set role ready AGAIN.", true
+                return                
+            addToLog obj, "role-ready", name: socket.name, session: socket.session
+            obj.roleReady[socket.session] = true
+            obj.readyCount +=1
+            if obj.readyCount == obj.players.length
+                obj.stage = "proposing"
+                for s in io.sockets.clients(data.gameid)
+                    newLeader obj, s
+                #io.sockets.in(obj.gameid).emit "new-leader", 
+                #    leader: obj.players[obj.leader]
+                #    missionteamsize: obj.missionteamsize
+            saveGameData obj
+
     socket.on "propose", (data) ->
         loadGameData data, (err, obj) ->
             if obj.stage isnt "proposing"
@@ -269,6 +346,7 @@ io.sockets.on "connection", (socket) ->
             if socket.session isnt obj.players[obj.leader].session
                 addToLog obj, "illegalmove", description: "Player '#{socket.name}' attempted to propose a mission team, but isn't the leader.", true
                 return
+            obj.lastMission = undefined # clear out old value
             obj.proposal =
                 players: data.players
                 leader:
@@ -280,12 +358,14 @@ io.sockets.on "connection", (socket) ->
                 missionvotes: {}
                 missionvotecount: 0
                 failcount: 0
-                text: socket.name + " proposes the team: " + (player.name for player in data.players).toString().replace(/,/g, ", ")
+            obj.failedProposal = {} # clear any possible previous proposal    
             obj.stage = "voting"
+            for s in io.sockets.clients(data.gameid)
+                sendProposal obj, s
             addToLog obj, "proposal", name: socket.name, session: socket.session, players: data.players
             saveGameData obj
             #io.sockets.in(data.gameid).emit "voting", proposal: obj.proposal.text
-            sendGameData obj
+            #sendGameData obj
             
     socket.on "vote", (data) ->
         loadGameData data, (err, obj) ->
@@ -308,39 +388,30 @@ io.sockets.on "connection", (socket) ->
                 if obj.proposal.votedup
                     obj.failedProposalCount = 0
                     obj.stage = "mission"
-                    addToLog obj, "votepassed", votes: obj.proposal.votes
+                    for s in io.sockets.clients(data.gameid)
+                        startMission obj, s
                 else
                     obj.failedProposalCount += 1
                     if obj.failedProposalCount == 5 
                         obj.stage = "gameover"
                         obj.gameResult = "The spies have won. There were five failed team proposals.";
+                        for s in io.sockets.clients(data.gameid)
+                            gameOver obj, s
                     else
                         obj.stage = "proposing"
                         obj.leader = (obj.leader + 1) % obj.players.length
-                        addToLog obj, "votefailed", votes: obj.proposal.votes
                         obj.missionteamsize = rules.rounds[obj.players.length][obj.rounds.length]
-            saveGameData obj
-            sendGameData obj
+                        obj.failedProposal = obj.proposal
+                        obj.proposal = {}
+                        for s in io.sockets.clients(data.gameid)
+                            newLeader obj, s
 
-    socket.on "roleReady", (data) ->
-        loadGameData data, (err, obj) ->
-            if obj.stage isnt "roles"
-                addToLog obj, "illegalmove", description: "Player '#{socket.name}' attempted to set role ready, not time.", true
-                return
-            if not listContainsSession(obj.players)
-                addToLog obj, "illegalmove", description: "Player '#{socket.name}' attempted to set role ready, but isn't in the game.", true
-                return
-            if obj.roleReady[socket.session]
-                addToLog obj, "illegalmove", description: "Player '#{socket.name}' attempted to set role ready AGAIN.", true
-                return                
-            addToLog obj, "roleReady", name: socket.name, session: socket.session
-            obj.roleReady[socket.session] = true
-            obj.readyCount +=1
-            console.log "roleReady: " + obj.readyCount + " of " + obj.players.length
-            if obj.readyCount == obj.players.length
-                obj.stage = "proposing"
-                newLeader obj
+                        #io.sockets.in(data.gameid).emit "team-rejected",
+                        #    leader: obj.leader
             saveGameData obj
+            #sendGameData obj
+
+    
 
     socket.on "missionvote", (data) ->
         loadGameData data, (err, obj) ->
@@ -354,7 +425,6 @@ io.sockets.on "connection", (socket) ->
                 addToLog obj, "illegalmove", description: "Player '#{socket.name}' attempted to vote on the mission AGAIN.", true
                 return                
             addToLog obj, "missionvote", name: socket.name, session: socket.session, vote: data.vote
-            sendMessage obj, "<i>" + socket.name + " has participated in the mission!</i>"
             obj.proposal.missionvotes[socket.session] = {name: socket.name, vote: data.vote}
             obj.proposal.missionvotecount += 1
             if data.vote is "fail"
@@ -380,64 +450,32 @@ io.sockets.on "connection", (socket) ->
                 if obj.totalfailures == 3
                     obj.stage = "gameover"
                     obj.result = "The spies have won. Three missions have failed."
-                    #sendMessage obj, "<div style='color: red;'>The bad guys won... :(</div>"
-                    #io.sockets.in(data.gameid).emit "gameover", badplayers: obj.badplayers
+                    for s in io.sockets.clients(data.gameid)
+                        gameOver obj, s
                 else if obj.totalsuccesses == 3
                     obj.stage = "gameover"
                     obj.result = "The resistance has won. Three missions succeeded."
-                    #sendMessage obj, "<div style='color: blue;'>The good guys won!</div>"
-                    #io.sockets.in(data.gameid).emit "gameover", badplayers: obj.badplayers
+                    for s in io.sockets.clients(data.gameid)
+                        gameOver obj, s
                 else
                     obj.stage = "proposing"
                     obj.leader = (obj.leader + 1) % obj.players.length
                     obj.missionteamsize = rules.rounds[obj.players.length][obj.rounds.length]
-                    #newLeader obj
+                    obj.lastMission = obj.proposal
+                    for s in io.sockets.clients(data.gameid)
+                        newLeader obj, s
                 delete obj.proposal
             saveGameData obj
-            sendGameData obj
+            #sendGameData obj
                 
-    socket.on "startgame", (data) ->
-        console.log "startgame recieved"
-        loadGameData data, (err, obj) ->
-            if obj.stage isnt "unstarted"
-                console.log "invalid action"
-                addToLog obj, "illegalmove", description: "Player '#{socket.name}' attempted to start the game, but it's already started.", true
-                return
-            obj.started = true
-            obj.players = ({session: s, name: n} for s, n of obj.visitors)
-            numBad = rules.badplayers[obj.players.length]
-            obj.badplayers = (p.session for p in _.shuffle(obj.players)[0...numBad])
-            obj.rulesversion = rules.version
-            obj.leader = Math.floor(Math.random() * obj.players.length)
-            obj.totalfailures = 0
-            obj.totalsuccesses = 0
-            obj.timestarted = new Date()
-            obj.stage = "roles"
-            obj.rounds = []
-            for s in io.sockets.clients(data.gameid)
-                s.emit "roles"
-            sendGameData obj
-            addToLog obj, "gamestart"
-            obj.missionteamsize = rules.rounds[obj.players.length][obj.rounds.length]
-            console.log "startgame"
-            saveGameData obj
-            #sendRoles
-            #for s in io.sockets.clients(data.gameid)
-            #    if listContainsSession(obj.badplayers, s.session)
-            #        s.emit "roles", 
-            ##            role: "spy"
-            #            spies: obj.badplayers
-            #    else if listContainsSession(obj.players, s.session)
-            #        s.emit "roles", 
-            #            role: "resistance"
-            #newLeader obj
     
-    socket.on "disconnect", ->
-        for room of socket.rooms
-            if room and socket.rooms[room]
-                loadGameData gameid: room[1..], (err, obj) ->
-                    delete obj.visitors[socket.session]
-                    saveGameData obj
-                    sendVisitors obj
-                    
+    
+    #socket.on "disconnect", ->
+    #    for room of socket.rooms
+    #        if room and socket.rooms[room]
+    #            loadGameData gameid: room[1..], (err, obj) ->
+    #                delete obj.visitors[socket.session]
+    #                saveGameData obj
+    #                sendVisitors obj
+    #                
 server.listen 2020
