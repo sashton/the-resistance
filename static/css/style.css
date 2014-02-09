@@ -3,20 +3,30 @@ hr {
   margin-bottom: 10px;
 }
 
+body {
+  #background-image: url('http://www.francestwiddy.co.uk/blog/wp-content/uploads/2012/05/fallout3_destroyed_city_bus.png');
+  #background-image: url('http://khalifafilardha.files.wordpress.com/2011/06/sci-fi-post-apocalyptic-36436.jpg');
+  #background-image: url('http://devoncmather.com/wp-content/uploads/2012/12/dystopian-city-train-reference.jpg');
+  background: url('http://wkduffy.files.wordpress.com/2013/02/warehouse.png') no-repeat;
+  background-size: 290%;
+  background-position-x: 26%;
+}
+
+label {
+  color: white;
+  text-shadow: 0px 2px 2px #000000;
+}
+
 .player {
   border-radius: 5px;
   -moz-border-radius: 5px;
   -webkit-border-radius: 5px;
-  border: solid gray 1px;
-  margin-right: 10px;
   margin-bottom: 8px;
   padding: 0px 12px 0px 12px;
   font-size: 20px;
   float: left;
   position: relative;
-  text-shadow: 0px -1px 0px #cccccc;
-  color: #333333;
-  #background-color: #bbbbbb;
+  color: white;
   font-weight: bold;
   -webkit-touch-callout: none;
   -webkit-user-select: none;
@@ -26,12 +36,98 @@ hr {
   user-select: none; 
 }
 
+.number {
+  #transform: scale(0.7540.45);
+  #-ms-transform: scale(0.45,0.45); /* IE 9 */
+  #-webkit-transform: scale(0.45,0.45); /* Safari and Chrome */
+  #margin-left: -14px;
+  padding-right: 0px;
+  padding-left: 0px;
+  width: 20%;
+}
+
+.number-row {
+  margin-left: 0px;
+}
+
+
+.dogtag {
+  background:url(/static/img/dogtag-flat.png) no-repeat;
+  width: 117px;
+  height: 35px;
+  background-position-y: 0px;
+  cursor: pointer; 
+  cursor: hand;
+}
+
+.selected {
+  background:url(/static/img/dogtag-selected.png) no-repeat;
+}
+
+.role-spy {
+  background:url(/static/img/dogtag-spy.png) no-repeat;
+}
+
+.role-resistance {
+  background:url(/static/img/dogtag-resistance.png) no-repeat;
+}
+
+.inset-text {
+    /* Shadows are visible under slightly transparent text color */
+    #color: rgba(10,60,150, 0.8);
+    #text-shadow: 1px 4px 6px #def, 0 0 0 #000, 1px 4px 6px #def;
+    /*background-color: #333;
+-webkit-background-clip: text;
+-moz-background-clip: text;
+background-clip: text;
+color: transparent;
+text-shadow: rgba(255,255,255,0.8) 1px 1px 1px;*/
+/*color: rgba(10,60,150, 0.8);
+    text-shadow: 1px 4px 6px #def, 0 0 0 #000, 1px 4px 6px #def;*/
+    color: rgba(255, 255, 255, 0.6);
+text-shadow: 1px 1px 1px #7A7A7A, -0.4px -0.6px 0px #000000;
+}
+
+.selected .inset-text {
+  text-shadow: 1px 1px 1px #BDBD2D, -0.4px -0.6px 0px #6D6D08;
+}
+
+.name {
+  text-align: center;
+  vertical-align: middle;
+  padding-top: 3px;
+}
+
+.number-1 {
+  content:url(/static/img/c1.png);
+}
+
+.number-2 {
+  content:url(/static/img/c2.png);
+}
+
+.number-3 {
+  content:url(/static/img/c3.png);
+}
+
+.number-4 {
+  content:url(/static/img/c4.png);
+}
+
+.number-5 {
+  content:url(/static/img/c5.png);
+}
+
+.player-list {
+  margin-top: 10px;
+}
+
 
 .leader .leader-badge {
    content:url(/static/img/leader.png);
-   top: -9px;
+   top: -6px;
    position: absolute;
-   left: -8px;
+   left: -3px;
 }​
 
 .player .leader2 {
@@ -48,9 +144,7 @@ hr {
   left: -8px;
 }
 
-.player.selected {
-  background-color: yellow;
-}
+
 
 .player.proposed {
   background-color: green;
@@ -76,7 +170,7 @@ hr {
 
 .team .team-badge {
   content:url(/static/img/team.png);
-  bottom: 11px;
+  bottom: 15px;
   position: absolute;
   right: -12px;
   transform: scale(-0.5,0.6);
@@ -103,11 +197,33 @@ hr {
 }
 
 .failed {
-  background-color: red;
+  background: -moz-radial-gradient(center, ellipse cover, rgba(204,0,0,1) 0%, rgba(204,0,0,0.5) 55%, rgba(204,0,0,0) 65%, rgba(204,0,0,0) 100%); /* FF3.6+ */
+  background: -webkit-gradient(radial, center center, 0px, center center, 100%, color-stop(0%,rgba(204,0,0,1)), color-stop(55%,rgba(204,0,0,0.5)), color-stop(65%,rgba(204,0,0,0)), color-stop(100%,rgba(204,0,0,0))); /* Chrome,Safari4+ */
+  background: -webkit-radial-gradient(center, ellipse cover, rgba(204,0,0,1) 0%,rgba(204,0,0,0.5) 55%,rgba(204,0,0,0) 65%,rgba(204,0,0,0) 100%); /* Chrome10+,Safari5.1+ */
+  background: -o-radial-gradient(center, ellipse cover, rgba(204,0,0,1) 0%,rgba(204,0,0,0.5) 55%,rgba(204,0,0,0) 65%,rgba(204,0,0,0) 100%); /* Opera 12+ */
+  background: -ms-radial-gradient(center, ellipse cover, rgba(204,0,0,1) 0%,rgba(204,0,0,0.5) 55%,rgba(204,0,0,0) 65%,rgba(204,0,0,0) 100%); /* IE10+ */
+  background: radial-gradient(ellipse at center, rgba(204,0,0,1) 0%,rgba(204,0,0,0.5) 55%,rgba(204,0,0,0) 65%,rgba(204,0,0,0) 100%); /* W3C */
+  filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#cc0000', endColorstr='#00cc0000',GradientType=1 ); /* IE6-9 fallback on horizontal gradient */
 }
 
 .passed {
-  background-color: lightgreen;
+  background: -moz-radial-gradient(center, ellipse cover,  rgba(0,117,35,1) 0%, rgba(0,117,35,0.5) 55%, rgba(0,117,35,0) 65%, rgba(0,117,35,0) 100%); /* FF3.6+ */
+  background: -webkit-gradient(radial, center center, 0px, center center, 100%, color-stop(0%,rgba(0,117,35,1)), color-stop(55%,rgba(0,117,35,0.5)), color-stop(65%,rgba(0,117,35,0)), color-stop(100%,rgba(0,117,35,0))); /* Chrome,Safari4+ */
+  background: -webkit-radial-gradient(center, ellipse cover,  rgba(0,117,35,1) 0%,rgba(0,117,35,0.5) 55%,rgba(0,117,35,0) 65%,rgba(0,117,35,0) 100%); /* Chrome10+,Safari5.1+ */
+  background: -o-radial-gradient(center, ellipse cover,  rgba(0,117,35,1) 0%,rgba(0,117,35,0.5) 55%,rgba(0,117,35,0) 65%,rgba(0,117,35,0) 100%); /* Opera 12+ */
+  background: -ms-radial-gradient(center, ellipse cover,  rgba(0,117,35,1) 0%,rgba(0,117,35,0.5) 55%,rgba(0,117,35,0) 65%,rgba(0,117,35,0) 100%); /* IE10+ */
+  background: radial-gradient(ellipse at center,  rgba(0,117,35,1) 0%,rgba(0,117,35,0.5) 55%,rgba(0,117,35,0) 65%,rgba(0,117,35,0) 100%); /* W3C */
+  filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#007523', endColorstr='#00007523',GradientType=1 ); /* IE6-9 fallback on horizontal gradient */
 }
 
 
+.active {
+background: -moz-radial-gradient(center, ellipse cover,  rgba(0,0,0,1) 0%, rgba(0,0,0,1) 9%, rgba(170,170,170,1) 16%, rgba(0,0,0,1) 26%, rgba(170,170,170,1) 37%, rgba(0,0,0,1) 47%, rgba(170,170,170,1) 58%, rgba(0,0,0,0) 68%, rgba(0,0,0,0) 100%); /* FF3.6+ */
+background: -webkit-gradient(radial, center center, 0px, center center, 100%, color-stop(0%,rgba(0,0,0,1)), color-stop(9%,rgba(0,0,0,1)), color-stop(16%,rgba(170,170,170,1)), color-stop(26%,rgba(0,0,0,1)), color-stop(37%,rgba(170,170,170,1)), color-stop(47%,rgba(0,0,0,1)), color-stop(58%,rgba(170,170,170,1)), color-stop(68%,rgba(0,0,0,0)), color-stop(100%,rgba(0,0,0,0))); /* Chrome,Safari4+ */
+background: -webkit-radial-gradient(center, ellipse cover,  rgba(0,0,0,1) 0%,rgba(0,0,0,1) 9%,rgba(170,170,170,1) 16%,rgba(0,0,0,1) 26%,rgba(170,170,170,1) 37%,rgba(0,0,0,1) 47%,rgba(170,170,170,1) 58%,rgba(0,0,0,0) 68%,rgba(0,0,0,0) 100%); /* Chrome10+,Safari5.1+ */
+background: -o-radial-gradient(center, ellipse cover,  rgba(0,0,0,1) 0%,rgba(0,0,0,1) 9%,rgba(170,170,170,1) 16%,rgba(0,0,0,1) 26%,rgba(170,170,170,1) 37%,rgba(0,0,0,1) 47%,rgba(170,170,170,1) 58%,rgba(0,0,0,0) 68%,rgba(0,0,0,0) 100%); /* Opera 12+ */
+background: -ms-radial-gradient(center, ellipse cover,  rgba(0,0,0,1) 0%,rgba(0,0,0,1) 9%,rgba(170,170,170,1) 16%,rgba(0,0,0,1) 26%,rgba(170,170,170,1) 37%,rgba(0,0,0,1) 47%,rgba(170,170,170,1) 58%,rgba(0,0,0,0) 68%,rgba(0,0,0,0) 100%); /* IE10+ */
+background: radial-gradient(ellipse at center,  rgba(0,0,0,1) 0%,rgba(0,0,0,1) 9%,rgba(170,170,170,1) 16%,rgba(0,0,0,1) 26%,rgba(170,170,170,1) 37%,rgba(0,0,0,1) 47%,rgba(170,170,170,1) 58%,rgba(0,0,0,0) 68%,rgba(0,0,0,0) 100%); /* W3C */
+filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#000000', endColorstr='#00000000',GradientType=1 ); /* IE6-9 fallback on horizontal gradient */
+
+}

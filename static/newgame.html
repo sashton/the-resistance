@@ -24,7 +24,7 @@
           </div>
           <div class="row">
             <div class="col-xs-12">
-              <input ng-model="$parent.playerName"/>
+              <input ng-model="$parent.playerName" maxlength="8"/>
             </div>
           </div>
           <div class="row">
@@ -37,33 +37,29 @@
           <div class="row">
             <div class="col-xs-6">
               <label>Missions</label>
-              <div id="game-state" >
-                <span id="round0" class="round failed">2</span>  
-                <span id="round1" class="round passed">3</span>  
-                <span id="round2" class="round passed">2</span>  
-                <span id="round3" class="round current">3</span>  
-                <span id="round4" class="round">4</span>  
+              <div class="row number-row">
+                <div id="game-state" >
+                  <span ng-repeat="roundCount in game.counts track by $index" class="number col-xs-2" ng-class="roundClass($index, roundCount)">{{roundCount}}</span>
+                </div>
               </div>
             </div>
             <div class="col-xs-6">
               <label>Teams</label>
-              <div id="game-state" >
-                <span id="round0" class="round failed">1</span>  
-                <span id="round1" class="round current">2</span>  
-                <span id="round2" class="round">3</span>  
-                <span id="round3" class="round">4</span>  
-                <span id="round4" class="round">5</span>  
+              <div class="row number-row">
+                <div id="game-state" >
+                  <span ng-repeat="proposalCount in [1,2,3,4,5] track by $index" class="number col-xs-2" ng-class="proposalClass($index)">{{proposalCount}}</span>
+                </div>
               </div>
             </div>
           </div>    
         </div>
       </div>
       
-      <hr/>
-      <div class="row">
+      <!-- <hr/> -->
+      <div class="row player-list">
         <div class="col-xs-12" >
-          <div class="player" ng-repeat="player in game.players" ng-click="clickPlayer(player)" ng-class="personClass(player)">
-            <div>{{player.name}}</div>
+          <div class="player dogtag" ng-repeat="player in game.players" ng-click="clickPlayer(player)" ng-class="personClass(player)">
+            <div class="inset-text name">{{player.name}}</div>
             <span class="leader-badge"  ></span>
             <span class="vote-up-badge" ></span>
             <span class="vote-down-badge" ></span>
@@ -71,7 +67,7 @@
           </div>  
         </div>
       </div>
-      <hr/>
+      <!-- <hr/> -->
       <div class="row" ng-hide="msg2 == undefined">
         <div class="col-xs-12">
           <label>{{msg2}}</label>

@@ -22,6 +22,16 @@ app.get "/", (request, response) ->
     fs.readFile __dirname + "/static/index.html", (err, text) ->
         response.end text
 
+
+currentGame = undefined
+
+app.get "/resistance", (request, response) ->
+    if _.isUndefined(currentGame)
+        response.redirect "/"
+    else
+        response.redirect "/game/" + currentGame
+
+
 ensureSessionCookie = (request, response) ->
     cookies = {}
     for cookie in request.headers.cookie?.split(";") or []
@@ -116,7 +126,7 @@ addToLog = (data, eventtype, params={}, save=false) ->
 io.sockets.on "connection", (socket) ->
     
     socket.session = ""
-    socket.name = "Guest" + Math.random().toString()[3..7]
+    socket.name = "Guest" # + Math.random().toString()[3..7]
     socket.rooms = io.sockets.manager.roomClients[socket.id]
     
     newLeader = (obj, socket) ->
@@ -124,6 +134,9 @@ io.sockets.on "connection", (socket) ->
             leader: obj.players[obj.leader]
             missionteamsize: obj.missionteamsize
             failedProposal: obj.failedProposal
+            lastMission: obj.lastMission
+            rounds: obj.rounds
+            proposalResults: obj.proposalResults
         #sendGameData obj
         #io.sockets.in(obj.gameid).emit "new-leader", obj
     
@@ -188,10 +201,13 @@ io.sockets.on "connection", (socket) ->
         socket.emit "start-mission",
             voted: !_.isUndefined(obj.proposal.missionvotes[socket.session])
             proposal: obj.proposal
+            proposalResults: obj.proposalResults
 
     gameOver = (obj, socket) ->
         socket.emit "gameover",
             result: obj.result
+            proposalResults: obj.proposalResults
+            spies: obj.spies
     
     proposeIfLeader = (obj) ->
         if obj.started and socket.session is obj.players[obj.leader].session and obj.stage is "proposing"
@@ -233,6 +249,7 @@ io.sockets.on "connection", (socket) ->
             readyCount: 0
             stage: "unstarted"
             failedProposalCount: 0
+            proposalResults: []
         games.save gamedata, (err, obj) ->
             if err
                 console.error err
@@ -243,6 +260,7 @@ io.sockets.on "connection", (socket) ->
                 io.sockets.in(data.gameid).emit "showgame", gameid: obj._id
             else
                 socket.emit "showgame", gameid: obj._id
+            currentGame = obj._id
 
     socket.on "join-game", (data) ->
         if not socket.session then return
@@ -277,6 +295,7 @@ io.sockets.on "connection", (socket) ->
     
     socket.on "start-game", (data) ->
         loadGameData data, (err, obj) ->
+            currentGame = undefined
             if obj.stage isnt "unstarted"
                 console.log "invalid action"
                 addToLog obj, "illegalmove", description: "Player '#{socket.name}' attempted to start the game, but it's already started.", true
@@ -309,10 +328,12 @@ io.sockets.on "connection", (socket) ->
                 role: "spy"
                 spies: obj.spies
                 roleReady: obj.roleReady[socket.session]
+                counts: rules.rounds[obj.players.length]
         else if listContainsSession(obj.players, socket.session)
             socket.emit "new-role", 
                 role: "resistance"
                 spies: []
+                counts: rules.rounds[obj.players.length]
                 roleReady: obj.roleReady[socket.session]
 
     socket.on "role-ready", (data) ->
@@ -346,7 +367,8 @@ io.sockets.on "connection", (socket) ->
             if socket.session isnt obj.players[obj.leader].session
                 addToLog obj, "illegalmove", description: "Player '#{socket.name}' attempted to propose a mission team, but isn't the leader.", true
                 return
-            obj.lastMission = undefined # clear out old value
+            delete obj.lastMission  # clear out old value
+            delete obj.failedProposal # clear any possible previous proposal    
             obj.proposal =
                 players: data.players
                 leader:
@@ -358,7 +380,6 @@ io.sockets.on "connection", (socket) ->
                 missionvotes: {}
                 missionvotecount: 0
                 failcount: 0
-            obj.failedProposal = {} # clear any possible previous proposal    
             obj.stage = "voting"
             for s in io.sockets.clients(data.gameid)
                 sendProposal obj, s
@@ -385,6 +406,7 @@ io.sockets.on "connection", (socket) ->
                 obj.proposal.upcount += 1
             if obj.proposal.votecount == obj.players.length
                 obj.proposal.votedup = obj.proposal.upcount / obj.proposal.votecount > 0.5
+                obj.proposalResults.push obj.proposal.votedup                
                 if obj.proposal.votedup
                     obj.failedProposalCount = 0
                     obj.stage = "mission"
@@ -394,7 +416,7 @@ io.sockets.on "connection", (socket) ->
                     obj.failedProposalCount += 1
                     if obj.failedProposalCount == 5 
                         obj.stage = "gameover"
-                        obj.gameResult = "The spies have won. There were five failed team proposals.";
+                        obj.result = "The spies have won. There were five failed team proposals.";
                         for s in io.sockets.clients(data.gameid)
                             gameOver obj, s
                     else
@@ -443,10 +465,8 @@ io.sockets.on "connection", (socket) ->
                     obj.totalsuccesses += 1
                     addToLog obj, "missionpassed", failcount: obj.proposal.failcount
                 obj.rounds.push obj.proposal
-                #io.sockets.in(data.gameid).emit "missioncomplete",
-                #    failcount: obj.proposal.failcount
-                #    failed: obj.proposal.failed
-                #    round: obj.rounds.length - 1
+                # reset the proposal results
+                obj.proposalResults = []
                 if obj.totalfailures == 3
                     obj.stage = "gameover"
                     obj.result = "The spies have won. Three missions have failed."

@@ -42,7 +42,8 @@ app.controller('AppCtrl', function($scope, socket){
 	var gamedata = {};
     $scope.game = {
         stage: "unstarted",
-        players: []
+        players: [],
+        counts: []
     }; // to save typing $scope everywhere
     $scope.game.stage = "unstarted";
     $scope.showSelectedPlayers = false;
@@ -141,6 +142,13 @@ app.controller('AppCtrl', function($scope, socket){
         $scope.game.role = data.role;
         $scope.game.spies = data.spies;
         $scope.game.roleReady = data.roleReady;
+        // clear out and populate without replacing actual reference
+        // to avoid scope issues
+        $scope.game.counts.length = 0;
+        _.each(data.counts, function(value){
+            $scope.game.counts.push(value);
+        })
+        $scope.game.counts = data.counts;
 
         if($scope.game.role == "spy") {
             var spies = _.chain($scope.game.spies)
@@ -180,15 +188,20 @@ app.controller('AppCtrl', function($scope, socket){
     socket.on("new-leader", function(data) {
         $scope.game.stage = "proposing";
         $scope.game.leader = data.leader;
+        $scope.game.rounds = data.rounds;
         $scope.game.missionteamsize = data.missionteamsize
         $scope.selectedPlayers = [];
         $scope.failedProposal = data.failedProposal;
+        $scope.lastMission = data.lastMission;
+        $scope.game.proposalResults = data.proposalResults;
+        $scope.msg2 = undefined;
+
         if(_.isDefined($scope.failedProposal)) {
-            var team = _.chain($scope.failedProposal.players)
-                .map(function(player){return player.name;})
-                .value()
-                .join(", ");
-            $scope.msg2 = "The team was rejected (" + team + ")";        
+            // var team = _.chain($scope.failedProposal.players)
+            //     .map(function(player){return player.name;})
+            //     .value()
+            //     .join(", ");
+            $scope.msg2 = "The team was rejected";        
         }
         else if(_.isDefined($scope.lastMission)){
             var result = $scope.lastMission.failed ? "failed" : "succeeded";
@@ -201,7 +214,7 @@ app.controller('AppCtrl', function($scope, socket){
         }
 
         if ($scope.game.leader.session === session) {
-            $scope.msg = "You are the leader. Select " + $scope.game.missionteamsize + " players for the mission";
+            $scope.msg = "You are the leader. Select players for the mission";
             $scope.yesText = "Propose";
             $scope.showYes = true;
             $scope.showNo = false;
@@ -216,7 +229,7 @@ app.controller('AppCtrl', function($scope, socket){
                 emit("propose", {players:team});
             };    
         } else {
-            $scope.msg = $scope.game.leader.name + " is now the leader, and is choosing " + $scope.game.missionteamsize + " players for the next mission.";
+            $scope.msg = $scope.game.leader.name + " is now the leader.";
             $scope.showYes = false;
             $scope.showNo = false;
             $scope.selectedPlayers = [];
@@ -231,7 +244,7 @@ app.controller('AppCtrl', function($scope, socket){
         $scope.msg2 = "FAILED!";
 
         if ($scope.game.leader.session === session) {
-            $scope.msg = "You are the leader. Select " + $scope.game.missionteamsize + " players for the mission";
+            $scope.msg = "You are the leader. Select players for the mission";
             $scope.yesText = "Propose";
             $scope.showYes = true;
             $scope.showNo = false;
@@ -258,6 +271,8 @@ app.controller('AppCtrl', function($scope, socket){
         $scope.game.stage = "voting";
         $scope.game.proposal = data.proposal;
         $scope.game.voted = data.voted;
+        $scope.selectedPlayers = [];
+        $scope.msg2 = undefined;
 
         if($scope.game.voted) {
             $scope.msg = "Waiting for the rest of the votes";
@@ -296,6 +311,8 @@ app.controller('AppCtrl', function($scope, socket){
         $scope.game.stage = "mission";
         $scope.game.voted = data.voted;
         $scope.proposal = data.proposal;
+        $scope.game.proposalResults = data.proposalResults;
+        $scope.msg2 = undefined;
 
         var onteam = _.isDefined(_.findWhere($scope.proposal.players, {session:session}));
 
@@ -315,7 +332,7 @@ app.controller('AppCtrl', function($scope, socket){
         $scope.yesText = "Succeed";
         $scope.noText = "Fail";
         $scope.yesEnabled = true;
-        $scope.noEnabled = $scope.role == 'spy';
+        $scope.noEnabled = $scope.game.role == 'spy';
 
         $scope.clickYes = function() {
             $scope.showYes = false;
@@ -342,6 +359,8 @@ app.controller('AppCtrl', function($scope, socket){
         $scope.msg = data.result;
         $scope.showYes = false;
         $scope.showNo = false;
+        $scope.game.proposalResults = data.proposalResults;
+        $scope.game.spies = data.spies;
     });
 
         
@@ -392,10 +411,67 @@ app.controller('AppCtrl', function($scope, socket){
             foo['vote-down'] = $scope.failedProposal.votes[p.session].vote == "down";
             foo.team = _.isDefined(_.findWhere($scope.failedProposal.players, {session:p.session}));
         }
-
-
+        if($scope.showTeamPlayers && _.isDefined($scope.proposal)) {
+            foo.team = _.isDefined(_.findWhere($scope.proposal.players, {session:p.session}));
+            foo['vote-up'] = $scope.proposal.votes[p.session].vote == "up";
+            foo['vote-down'] = $scope.proposal.votes[p.session].vote == "down";
+        }
+        if($scope.showTeamRoles) {
+            foo['role-spy'] = _.contains($scope.game.spies, p.session);
+            foo['role-resistance'] = p.session == session && $scope.game.role == 'resistance';
+        }
+        if($scope.showAllRoles) {
+            foo['role-spy'] = _.contains($scope.game.spies, p.session);
+            foo['role-resistance'] = !_.contains($scope.game.spies, p.session);
+        }
 		return foo;
 	};
+
+
+    $scope.roundClass = function(index, teamSize) {
+        var foo = {};
+        if(_.isDefined($scope.game.rounds)){
+            if(index < $scope.game.rounds.length){
+                foo.passed = $scope.game.rounds[index].failed == false;
+                foo.failed = $scope.game.rounds[index].failed == true;
+            }
+            else if(index == $scope.game.rounds.length){
+                foo.active = true;
+            }
+        }
+        var numberImageClass = "number-" + (teamSize);
+        foo[numberImageClass] = true;
+        return foo;
+    };
+
+    $scope.proposalClass = function(index) {
+        var foo = {};
+        if($scope.game.stage == "proposing" || 
+            $scope.game.stage == "voting" || 
+            $scope.game.stage == "gameover" || 
+            $scope.game.stage == "mission") {
+            if(_.isDefined($scope.game.proposalResults)) {
+                if(index < $scope.game.proposalResults.length) {
+                    foo.passed = $scope.game.proposalResults[index] == true;
+                    foo.failed = $scope.game.proposalResults[index] == false;
+                }
+            } 
+        }
+        if($scope.game.stage == "proposing" || 
+            $scope.game.stage == "voting" || 
+            $scope.game.stage == "gameover" ) {
+            if(_.isDefined($scope.game.proposalResults)) {
+                if(index == $scope.game.proposalResults.length){
+                    foo.active = true;
+                }
+            } 
+        }
+
+
+        var numberImageClass = "number-" + (index+1);
+        foo[numberImageClass] = true;
+        return foo;
+    };
 
 	$scope.yesClass = function() {
         return {
@@ -539,10 +615,18 @@ app.controller('AppCtrl', function($scope, socket){
 
     $scope.$watch('[game.stage, failedProposal]', function () { 
         $scope.showPreviousProposal = $scope.game.stage == "proposing" && _.isDefined($scope.failedProposal);
-
-        
-
     }, true);
+
+    $scope.$watch('game.stage', function () { 
+        $scope.showTeamPlayers = $scope.game.stage == "mission";
+        $scope.showTeamRoles = $scope.game.stage == "role-assign";
+        $scope.showAllRoles = $scope.game.stage == "gameover";
+    });
+
+    $scope.$watch('game.rounds', function () { 
+        var foo = $scope.game.rounds;
+        console.log(foo);
+    });
 
 
 
